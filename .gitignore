@@ -14,6 +14,10 @@ __pycache__/
 # Artefatos gerados durante a exploracao (o modelo final fica versionado)
 notebooks/figuras/*.tmp
 
+# Chapeu Seletor Completo: investigado e descartado (README, secao "Uma
+# combinacao que testei e nao vingou"). O script fica, o .pkl gerado nao.
+modelos/chapeu_seletor_completo.pkl
+
 # Sistema operacional / IDE
 .DS_Store
 Thumbs.db

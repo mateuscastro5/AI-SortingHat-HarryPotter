@@ -25,8 +25,10 @@ Dataset → preparação → treinamento → avaliação → modelo .pkl → API
 - [Por que dois datasets](#por-que-dois-datasets)
 - [Modelo 1 — Chapéu Seletor](#modelo-1--chapéu-seletor-decisão)
 - [Modelo 2 — Triagem Cadastral](#modelo-2--triagem-cadastral-sugestão)
+- [Uma combinação que não vingou](#-uma-combinação-que-testei-e-não-vingou)
 - [O sistema](#-o-sistema)
 - [Limitações conhecidas](#-limitações-conhecidas)
+- [Conclusão](#-conclusão)
 - [Como rodar](#-como-rodar)
 - [Endpoints](#-endpoints)
 
@@ -277,6 +279,50 @@ interface deixa isso explícito pro usuário.
 
 ---
 
+## 🧵 Uma combinação que testei e não vingou
+
+Depois que os dois modelos ficaram prontos, veio a ideia óbvia: **e se o
+resmungo da triagem virasse informação pro Chapéu Seletor decidir**, igual a
+cena do filme em duas etapas — primeiro o murmúrio, depois o veredito?
+Retreinei o modelo de decisão recebendo as 8 notas *mais* o resultado da
+triagem.
+
+O primeiro obstáculo foi de dado, não de modelo: nenhum aluno do acervo tem
+notas de personalidade *e* ficha cadastral genuínas ao mesmo tempo — são dois
+datasets separados. Pra treinar mesmo assim, cada um dos 1000 alunos
+fictícios ganhou um sobrenome sintético, calibrado em duas taxas que já
+tinham sido **medidas** no resto do projeto, não inventadas: só 14% dos
+alunos ficam com "linhagem conhecida" (a mesma cobertura real do acervo), e
+entre esses, o sobrenome bate com a casa verdadeira em 59,9% das vezes (a
+mesma taxa de concordância família→casa medida no notebook 03).
+
+Testei 5 jeitos diferentes de aproveitar esse sinal: as 4 probabilidades da
+triagem cruas, casa sugerida + confiança, uma feature de interação
+(nota-do-traço × probabilidade-da-triagem, pra deixar o modelo reforçar só
+quando os dois concordam), uma busca em 7 forças de regularização diferentes,
+e por fim uma regra explícita — nada de retreino, só "se o chapéu já está em
+dúvida e existe família batendo, usa a família". Nenhuma das cinco ajudou.
+
+Na melhor das hipóteses o modelo **empatava** com o original nos casos onde
+ele já vacila (aprendia a ignorar o sinal, sensatamente); com mais peso no
+sinal, ele **piorava**. A regra explícita nem teve chance de agir: dos 47
+casos ambíguos que testei, só 5 tinham família conhecida — e nesses 5 o
+modelo original já acertava tudo sozinho.
+
+A causa não é falta de técnica, é quantidade de sinal: linhagem só existe em
+14% dos casos, e quando existe, acerta 59,9% — acima do chute (25% entre 4
+casas), mas fraco demais pra desempatar um modelo que já sozinho acerta
+99,8%. Não tem representação nem regularização que fabrique informação que os
+dados não têm.
+
+**Conclusão:** o Chapéu Seletor continua decidindo sozinho, com as notas de
+personalidade. A combinação fica documentada aqui — e o código de
+`treinar_completo.py` continua no repositório — porque um resultado negativo
+bem testado também é resultado, e é o mesmo padrão de honestidade que já valeu
+pros 44% da triagem.
+
+---
+
 ## 💻 O sistema
 
 Interface única servida pela própria API — Tailwind + Alpine.js via CDN, sem
@@ -323,6 +369,41 @@ a investigação das quatro fontes está documentada acima.
 
 **4. A feature de linhagem só cobre ~14% dos personagens do teste.** Pro
 resto, a casa da família entra como "desconhecido".
+
+---
+
+## 🎯 Conclusão
+
+Comecei achando que o trabalho era escolher um dataset e treinar um modelo.
+No fim, o que ficou foi outra coisa: os dois datasets disponíveis respondem
+perguntas diferentes, e forçar um deles a responder pela outra dava um
+sistema mentiroso — ou um modelo de 99% que não serve pra nada fora do papel,
+ou um modelo "real" de 44% vendido como decisão final.
+
+A solução foi não escolher: a **triagem** roda antes e só sugere, com a
+acurácia real (44%) escrita na cara do usuário; o **Chapéu Seletor** roda na
+hora e decide, porque é nele que dá pra confiar. Nenhum dos dois finge ser
+melhor do que é.
+
+A parte que mais valeu a pena não foi subir a acurácia — depois de 99% ela
+parou de significar algo. Foi ir atrás de **onde** cada modelo quebra: o
+Gradient Boosting tinha o número mais bonito e era o pior dos três assim que
+eu testava um perfil fora do normal (o Harry e a Hermione iam pra Lufa-Lufa).
+E foi caçar vazamento de dado na triagem — sem isso, o modelo estaria lendo a
+resposta em vez de aprendendo alguma coisa.
+
+Isso valeu até pra uma ideia que não deu certo: tentei fazer o Chapéu Seletor
+usar o resmungo da triagem como informação pra decidir (a seção
+["Uma combinação que testei e não vingou"](#-uma-combinação-que-testei-e-não-vingou)
+conta em detalhe). Testei 5 jeitos diferentes, nenhum ajudou — e entender
+*por que* não ajudou (pouco sinal, não falta de técnica) valeu tanto quanto
+se tivesse dado certo.
+
+Como próximo passo, o mais valioso seria atacar o problema real documentado
+acima: o modelo de decisão não aprendeu a arbitrar quando dois traços
+empatam no topo, porque o dataset de treino nunca mostrou esse caso. Dá pra
+gerar esses exemplos sintéticos e testar se o modelo aprende a desempatar do
+jeito certo.
 
 ---
 
