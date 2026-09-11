@@ -68,6 +68,8 @@ Quatro, nos dois datasets:
 | Ravenclaw (Corvinal) | 258 · 25,8% | 203 · 20,6% |
 | Hufflepuff (Lufa-Lufa) | 251 · 25,1% | 212 · 21,5% |
 
+![Distribuição das casas](notebooks/figuras/distribuicao_casas.png)
+
 ### 4. Quais informações serão utilizadas como entrada do modelo?
 
 **Modelo 1 (decisão)** — oito notas de 0 a 10 da avaliação de ingresso:
@@ -84,6 +86,8 @@ teste de qui-quadrado no [notebook 01](notebooks/01_analise_exploratoria.ipynb)
 deu p = 0,53 — ou seja, essa variável não tem relação estatística nenhuma com
 a casa. E mesmo que tivesse, eu não usaria: é literalmente o critério
 preconceituoso que a Sonserina usa nos livros.
+
+![Nota média por casa](notebooks/figuras/media_atributos_por_casa.png)
 
 ### 5. Quem utilizaria essa aplicação e com qual finalidade?
 
@@ -160,6 +164,8 @@ Comparei seis algoritmos por validação cruzada e todos passaram de 99% — a
 diferença entre o primeiro e o último era de 6 alunos em 800. Acurácia
 parou de servir como critério, então fui atrás de onde cada modelo quebra.
 
+![Comparação dos modelos](notebooks/figuras/comparacao_modelos.png)
+
 O Gradient Boosting cravou 100% no teste, o que me deixou desconfiado em vez
 de satisfeito. Fui investigar e descobri por quê: no dataset inteiro nenhum
 aluno tem dois atributos principais com nota 8 ou mais — sempre existe um
@@ -174,6 +180,8 @@ aluno pra Lufa-Lufa. Nenhuma métrica de acurácia mostra isso, porque o
 problema está fora da distribuição de treino. Testei também com personagens
 que conheço dos livros (Harry, Hermione, Draco, Luna, Cedrico) — o Gradient
 Boosting errou o Harry e a Hermione, mandando os dois pra Lufa-Lufa.
+
+![Teste de monotonicidade](notebooks/figuras/teste_monotonicidade.png)
 
 Repeti o teste em volume, gerando mais de mil perfis sintéticos e comparando
 com a "regra do maior atributo" (a lógica óbvia de manda-pra-casa-do-traço-
@@ -204,6 +212,8 @@ acurácia pro Gradient Boosting, mas em troca:
 O único erro nos 200 alunos de teste foi um empate real (inteligência 7,
 lealdade 7), e o próprio modelo sinalizou isso com confiança de só 0,65 —
 exatamente o tipo de caso que a triagem manda pra entrevista.
+
+![Coeficientes](notebooks/figuras/importancia_atributos.png)
 
 Os coeficientes batem com o que os livros contam: Grifinória puxa por
 coragem, Corvinal por inteligência e criatividade, Lufa-Lufa por lealdade,
@@ -243,10 +253,14 @@ fosse o principal, sozinha é a melhor feature isolada, mas no modelo completo
 quase não faz diferença, porque títulos e profissão já carregam a mesma
 informação por outro caminho.
 
+![Ablação](notebooks/figuras/ablacao_triagem.png)
+
 Entre os algoritmos testados, o LinearSVC ganhou por uma margem pequena, mas
 não tem `predict_proba` — e o sistema precisa das quatro probabilidades pra
 mostrar a confiança da sugestão. Por isso, de novo, fiquei com a Regressão
 Logística.
+
+![Comparação triagem](notebooks/figuras/comparacao_triagem.png)
 
 | Métrica | Valor |
 |---|---|
