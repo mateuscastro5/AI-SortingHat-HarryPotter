@@ -1,0 +1,17 @@
+# Dados e modelagem
+pandas
+numpy
+scikit-learn
+joblib
+
+# Visualizacao (usada apenas nos notebooks)
+matplotlib
+seaborn
+
+# Notebooks
+jupyter
+ipykernel
+
+# API
+fastapi
+uvicorn[standard]
