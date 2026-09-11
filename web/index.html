@@ -363,7 +363,7 @@
                 <select x-model="ficha[campo.chave]" class="mt-1.5">
                   <option value="">— não informado —</option>
                   <template x-for="opcao in (opcoes[campo.chave] || [])" :key="opcao">
-                    <option :value="opcao" x-text="opcao"></option>
+                    <option :value="opcao" x-text="traduzirOpcao(campo.chave, opcao)"></option>
                   </template>
                 </select>
               </label>
@@ -542,6 +542,58 @@ const NOMES_PT = {
   Ravenclaw: 'Corvinal',    Slytherin: 'Sonserina',
 };
 
+// O acervo (dataset real) guarda tudo em inglês. Aqui só troco o texto que
+// aparece no select — o valor enviado pra API continua o original, porque
+// foi com ele que o modelo treinou.
+const TRADUCOES_OPCOES = {
+  blood_status: {
+    'Half-blood': 'Sangue-misto',
+    'Half-blood or Muggle-born': 'Sangue-misto ou nascido-trouxa',
+    'Muggle-born': 'Nascido-trouxa',
+    'Pure-blood': 'Sangue-puro',
+    'Pure-blood (most likely)': 'Sangue-puro (provável)',
+    'Pure-blood or Half-blood': 'Sangue-puro ou sangue-misto',
+    'Pure-blood or half-blood': 'Sangue-puro ou sangue-misto',
+    'Pure-blood or half-blood (most likely)': 'Sangue-puro ou sangue-misto (provável)',
+    'Pure-blood or half-blood (possibly)': 'Sangue-puro ou sangue-misto (possível)',
+  },
+  gender: { Female: 'Feminino', Male: 'Masculino' },
+  species: {
+    Human: 'Humano',
+    'Human (formerly), Ghost': 'Humano (antigamente), fantasma',
+    'Human (werewolf)': 'Humano (lobisomem)',
+    Humans: 'Humano',
+  },
+  nationality: {
+    British: 'Britânico', 'British or Irish': 'Britânico ou irlandês',
+    English: 'Inglês', Irish: 'Irlandês', Scottish: 'Escocês',
+  },
+  eye_color: {
+    Black: 'Preto', Blue: 'Azul', 'Bright green': 'Verde vivo', Brown: 'Castanho',
+    Dark: 'Escuro', Green: 'Verde', Grey: 'Cinza', Hazel: 'Castanho-esverdeado',
+    'Light Brown': 'Castanho claro', 'Light brown': 'Castanho claro',
+  },
+  hair_color: {
+    Black: 'Preto', Blond: 'Loiro', Blonde: 'Loiro', Brown: 'Castanho',
+    Dark: 'Escuro', 'Dark brown': 'Castanho escuro', Grey: 'Grisalho',
+    'Jet-black': 'Preto-azeviche', 'Light brown': 'Castanho claro', Red: 'Ruivo',
+    Silver: 'Prateado', White: 'Branco', 'White-blond': 'Loiro quase branco',
+  },
+  skin_color: {
+    Black: 'Negra', Brown: 'Morena', Dark: 'Escura', Fair: 'Clara', Light: 'Clara',
+    Olive: 'Morena-oliva', Pale: 'Pálida', Tan: 'Bronzeada', White: 'Branca',
+  },
+  marital_status: {
+    Married: 'Casado(a)', 'Married or widowed': 'Casado(a) ou viúvo(a)',
+    Single: 'Solteiro(a)', Unmarried: 'Solteiro(a)', Widowed: 'Viúvo(a)',
+  },
+  patronus: { 'Non-corporeal': 'Não-corpóreo' },
+  boggart: {
+    'Lord Voldemort': 'Lord Voldemort',
+    'Rat, Rattlesnake, Bloody eyeball': 'Rato, cascavel, globo ocular ensanguentado',
+  },
+};
+
 function sistema() {
   return {
     tela: 'painel',
@@ -601,6 +653,9 @@ function sistema() {
     // ------------------------------------------------------------- helpers
     pct(v) { return v == null ? '—' : (v * 100).toFixed(1) + '%'; },
     nomePt(casa) { return NOMES_PT[casa] || casa; },
+    traduzirOpcao(campo, valor) {
+      return (TRADUCOES_OPCOES[campo] && TRADUCOES_OPCOES[campo][valor]) || valor;
+    },
     fichaVazia() {
       return { nome: '', blood_status: '', gender: '', species: '', nationality: '',
                eye_color: '', hair_color: '', skin_color: '', marital_status: '',
