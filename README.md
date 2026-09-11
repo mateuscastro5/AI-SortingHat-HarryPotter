@@ -32,12 +32,24 @@ O problema é de **classificação supervisionada multiclasse**: dado o perfil d
 aluno, decidir em qual das quatro casas ele entra. É o mesmo formato do churn
 visto em aula, com a diferença de que aqui são quatro classes em vez de duas.
 
-> **Aviso honesto sobre o dataset:** ele é sintético e foi gerado por uma regra
-> quase determinística. Isso ficou evidente na experimentação (todos os modelos
-> passaram de 99% de acurácia) e está documentado no notebook 02. Como o objetivo
-> da atividade é o fluxo end-to-end e não vencer um benchmark, isso não invalida
-> o projeto — mas mudou completamente o critério de escolha do modelo, como conto
-> mais abaixo.
+O arquivo é assim — sem nomes, sem identificação, só as notas e a casa:
+
+```
+Blood Status,Bravery,Intelligence,Loyalty,Ambition,Dark Arts Knowledge,Quidditch Skills,Dueling Skills,Creativity,House
+Half-blood,9,4,7,5,0,8,8,7,Gryffindor
+Muggle-born,6,8,5,7,5,6,4,9,Ravenclaw
+Pure-blood,1,4,7,7,1,4,4,6,Hufflepuff
+```
+
+> **Aviso honesto sobre o dataset:** os 1000 alunos são inventados. Não existe
+> nenhum personagem dos livros aqui, e ninguém mediu a lealdade ou a ambição de
+> ninguém — o autor do dataset **gerou os números sinteticamente**, seguindo uma
+> regra. Isso ficou evidente na experimentação, quando todos os modelos passaram
+> de 99% de acurácia, e está investigado em detalhe no notebook 02.
+>
+> Como o objetivo da atividade é o fluxo end-to-end e não vencer um benchmark,
+> isso não invalida o projeto. Mas mudou completamente o critério de escolha do
+> modelo, como conto mais abaixo.
 
 ### 2. Qual é a variável-alvo (target)?
 
@@ -175,16 +187,35 @@ comemorar, fui investigar. Descobri que no dataset inteiro nenhum aluno tem dois
 atributos principais com nota 8 ou mais: sempre existe um único traço dominante.
 Os 1000 alunos ocupam uma fatia estreitíssima do espaço de entrada.
 
-**Passo 3 — o primeiro teste de robustez não deu em nada.** Peguei os 200 alunos do
-teste e apliquei um piso nos quatro traços principais, simulando um aluno bom em
-tudo. Todos os modelos aguentaram, e o Gradient Boosting aguentou melhor que os
-outros — 100% até com piso 7. Deixo isso registrado no notebook porque importa: se
-eu tivesse parado aqui, teria concluído que o boosting era o mais robusto e teria
-colocado ele em produção. O teste era fraco, porque mexer nos traços fracos não
-desfaz a dominância do traço principal.
+**Passo 3 — o primeiro teste de robustez não deu em nada.** A ideia era simular um
+"aluno bom em tudo": peguei os 200 alunos do teste e forcei uma **nota mínima** nos
+quatro traços principais, deixando o resto igual. Quem já estava acima do mínimo
+não muda; quem estava abaixo sobe até ele.
 
-**Passo 4 — testei os modelos com perfis que o dataset não cobre**, montando na mão
-personagens que são bons em várias coisas ao mesmo tempo:
+| | Coragem | Inteligência | Lealdade | Ambição | Casa correta |
+|---|---|---|---|---|---|
+| Aluno original | 9 | 2 | 3 | 1 | Gryffindor |
+| Com mínimo de 6 | 9 | **6** | **6** | **6** | Gryffindor (não muda) |
+
+Ele continua sendo o mesmo aluno mais corajoso — só deixou de ser ruim no resto.
+Se o modelo só funcionasse porque os outros traços são baixos, quebraria aqui.
+
+**Não quebrou.** Todos aguentaram, e o Gradient Boosting aguentou melhor que os
+outros: 100% até com mínimo 7. Deixo registrado porque importa — se eu tivesse
+parado aqui, teria concluído que o boosting era o mais robusto e teria colocado ele
+em produção. O teste era fraco: mexer nos traços fracos não tira a dominância do
+traço principal, que continua em 9 e é o único que o modelo precisa enxergar.
+
+**Passo 4 — testei os modelos com perfis que o dataset não cobre.** Aqui é preciso
+ser claro sobre a origem dos dados: como o dataset não tem personagem nenhum,
+**fui eu que montei esses perfis na mão**, atribuindo notas de 0 a 10 conforme o
+que os livros mostram de cada um. A coluna "esperado" é a minha leitura do
+personagem, não um gabarito oficial. Esses perfis nunca entraram no treino nem em
+nenhuma métrica — servem só como teste de sanidade.
+
+O que eles têm de especial é serem bons em várias coisas ao mesmo tempo (o Harry
+tem coragem 10 **e** lealdade 8), situação que nenhum dos 1000 alunos do dataset
+apresenta:
 
 | Personagem | Esperado | Regressão Logística | Random Forest | Gradient Boosting |
 |---|---|---|---|---|
@@ -203,11 +234,16 @@ coragem sobe:
 
 O Gradient Boosting simplesmente ignora a coragem — mesmo com nota 10 ele continua
 mandando o aluno para a Lufa-Lufa. Nenhuma métrica de acurácia mostraria isso,
-porque o problema está fora da distribuição de treino.
+porque o problema está **fora da distribuição de treino**: esse perfil (tudo em 5)
+não se parece com nenhum dos 1000 alunos do dataset, e acurácia só mede acerto em
+dados parecidos com os do treino.
 
 **Passo 6 — confirmei com volume.** Gerei 1377 perfis aleatórios com os quatro
 traços principais todos entre 5 e 10 (alunos bons em várias coisas) e comparei a
-predição com o traço dominante de cada um:
+predição com o traço dominante de cada um — ou seja, com a **regra do maior
+atributo**: manda o aluno para a casa do traço em que ele tirou a maior nota
+(coragem → Grifinória, inteligência → Corvinal, lealdade → Lufa-Lufa, ambição →
+Sonserina).
 
 | Modelo | Concorda com o traço dominante |
 |---|---|
@@ -228,7 +264,7 @@ destino de um aluno, é o trade-off certo.
 | Critério | Gradient Boosting | Random Forest | **Regressão Logística** |
 |---|---|---|---|
 | Acurácia (validação cruzada) | 99.88% | 99.63% | 99.50% |
-| Teste do piso | ok | ok | ok |
+| Teste do aluno bom em tudo | ok | ok | ok |
 | Personagens conhecidos | 3/5 | 5/5 | **5/5** |
 | Responde à variação de atributo | não | em degraus | **sim, suave** |
 | Perfis fora da distribuição | 33.8% | 41.6% | **48.9%** |
@@ -243,8 +279,14 @@ destino de um aluno, é o trade-off certo.
 | F1-score macro | 99.51% |
 | Log loss | 0.0133 |
 | Acurácia 5-fold (1000 alunos) | 99.80% (± 0.24) |
-| Baseline "regra do maior atributo" | 94.60% |
-| Baseline "chutar a classe majoritária" | 26.50% |
+| Baseline: regra do maior atributo | 94.60% |
+| Baseline: chutar sempre a classe majoritária | 26.50% |
+
+As duas baselines existem para dar régua ao resultado. A **regra do maior
+atributo** manda o aluno para a casa do traço em que ele tirou a maior nota, sem
+modelo nenhum — é o que um estagiário faria com uma planilha, e já acerta 94.6%.
+A segunda é o piso absoluto: chutar sempre "Sonserina" (a casa mais frequente)
+acerta 26.5%. Um modelo só vale a pena se passar da primeira.
 
 ![Matriz de confusão](notebooks/figuras/matriz_confusao.png)
 
@@ -360,6 +402,15 @@ decisões apertadas.
 
 Status do serviço e metadados do modelo carregado (versão, data de treino, casas,
 ordem dos atributos, limite de confiança e métricas).
+
+## 🤖 Uso de IA generativa
+
+Este README e a documentação dos notebooks foram escritos com auxílio de IA
+generativa, usada como apoio de redação e revisão. O desenvolvimento do projeto
+(escolha do dataset, condução dos experimentos, decisão do modelo e implementação
+da API) foi acompanhado e validado por mim, e todos os números publicados aqui
+saem da execução real dos notebooks e dos scripts deste repositório — dá para
+reproduzir qualquer um deles rodando o código.
 
 ## 📊 Fonte dos dados
 
