@@ -235,7 +235,7 @@ adicionando:
 - **casa da família**, tirada do sobrenome. No cânone a casa é hereditária
   (todo Weasley é Grifinória), mas na prática, quando a família é conhecida,
   ela bate com a casa do personagem em só 60% dos casos — bem menos do que a
-  regra de ferro que a gente lembra dos livros. Achei um bug meu no caminho:
+  regra de ferro que a gente lembra dos livros. Achei um problema no caminho:
   muito personagem sem nome próprio virava "família" com nomes tipo `girl` ou
   `student`, que juntava gente das quatro casas — precisei filtrar isso;
 - **texto livre vetorizado** (títulos, profissão) com TF-IDF.
