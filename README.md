@@ -354,36 +354,18 @@ resto, a casa da família entra como "desconhecido".
 
 ## 🎯 Conclusão
 
-Comecei achando que o trabalho era escolher um dataset e treinar um modelo.
-No fim, o que ficou foi outra coisa: os dois datasets disponíveis respondem
-perguntas diferentes, e forçar um deles a responder pela outra dava um
-sistema mentiroso — ou um modelo de 99% que não serve pra nada fora do papel,
-ou um modelo "real" de 44% vendido como decisão final.
+Os dois datasets respondem perguntas diferentes, então uso os dois: a
+**triagem** sugere, o **Chapéu Seletor** decide. Nenhum finge ser melhor do
+que é.
 
-A solução foi não escolher: a **triagem** roda antes e só sugere, com a
-acurácia real (44%) escrita na cara do usuário; o **Chapéu Seletor** roda na
-hora e decide, porque é nele que dá pra confiar. Nenhum dos dois finge ser
-melhor do que é.
+O que mais valeu não foi subir acurácia — depois de 99% ela para de
+significar algo — foi achar onde cada modelo quebra: o Gradient Boosting
+parecia o melhor e errava o Harry e a Hermione; o vazamento nos títulos da
+triagem; e a
+[combinação dos dois modelos que testei e não ajudou](#-uma-combinação-que-testei-e-não-vingou).
 
-A parte que mais valeu a pena não foi subir a acurácia — depois de 99% ela
-parou de significar algo. Foi ir atrás de **onde** cada modelo quebra: o
-Gradient Boosting tinha o número mais bonito e era o pior dos três assim que
-eu testava um perfil fora do normal (o Harry e a Hermione iam pra Lufa-Lufa).
-E foi caçar vazamento de dado na triagem — sem isso, o modelo estaria lendo a
-resposta em vez de aprendendo alguma coisa.
-
-Isso valeu até pra uma ideia que não deu certo: tentei fazer o Chapéu Seletor
-usar o resmungo da triagem como informação pra decidir (a seção
-["Uma combinação que testei e não vingou"](#-uma-combinação-que-testei-e-não-vingou)
-conta em detalhe). Testei 5 jeitos diferentes, nenhum ajudou — e entender
-*por que* não ajudou (pouco sinal, não falta de técnica) valeu tanto quanto
-se tivesse dado certo.
-
-Como próximo passo, o mais valioso seria atacar o problema real documentado
-acima: o modelo de decisão não aprendeu a arbitrar quando dois traços
-empatam no topo, porque o dataset de treino nunca mostrou esse caso. Dá pra
-gerar esses exemplos sintéticos e testar se o modelo aprende a desempatar do
-jeito certo.
+**Próximo passo:** gerar perfis sintéticos com dois traços altos, rotulados
+pela regra do maior atributo, pra ensinar o modelo a desempatar empates.
 
 ---
 
