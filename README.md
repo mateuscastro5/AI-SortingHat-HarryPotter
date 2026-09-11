@@ -175,7 +175,15 @@ comemorar, fui investigar. Descobri que no dataset inteiro nenhum aluno tem dois
 atributos principais com nota 8 ou mais: sempre existe um único traço dominante.
 Os 1000 alunos ocupam uma fatia estreitíssima do espaço de entrada.
 
-**Passo 3 — testei os modelos com perfis que o dataset não cobre**, montando na mão
+**Passo 3 — o primeiro teste de robustez não deu em nada.** Peguei os 200 alunos do
+teste e apliquei um piso nos quatro traços principais, simulando um aluno bom em
+tudo. Todos os modelos aguentaram, e o Gradient Boosting aguentou melhor que os
+outros — 100% até com piso 7. Deixo isso registrado no notebook porque importa: se
+eu tivesse parado aqui, teria concluído que o boosting era o mais robusto e teria
+colocado ele em produção. O teste era fraco, porque mexer nos traços fracos não
+desfaz a dominância do traço principal.
+
+**Passo 4 — testei os modelos com perfis que o dataset não cobre**, montando na mão
 personagens que são bons em várias coisas ao mesmo tempo:
 
 | Personagem | Esperado | Regressão Logística | Random Forest | Gradient Boosting |
@@ -186,15 +194,31 @@ personagens que são bons em várias coisas ao mesmo tempo:
 | Draco Malfoy | Slytherin | ✅ | ✅ | ✅ |
 | Luna Lovegood | Ravenclaw | ✅ | ✅ | ✅ |
 
-**Passo 4 — teste de monotonicidade.** Fixei todos os atributos em 5 e fui subindo
-só a coragem de 0 a 10. Um chapéu que funciona tem que aumentar a chance de
-Grifinória conforme a coragem sobe:
+**Passo 5 — teste de monotonicidade.** Em vez de perturbar alunos reais, montei um
+perfil artificial: fixei todos os atributos em 5 e fui subindo só a coragem de 0 a
+10. Um chapéu que funciona tem que aumentar a chance de Grifinória conforme a
+coragem sobe:
 
 ![Teste de monotonicidade](notebooks/figuras/teste_monotonicidade.png)
 
 O Gradient Boosting simplesmente ignora a coragem — mesmo com nota 10 ele continua
 mandando o aluno para a Lufa-Lufa. Nenhuma métrica de acurácia mostraria isso,
 porque o problema está fora da distribuição de treino.
+
+**Passo 6 — confirmei com volume.** Gerei 1377 perfis aleatórios com os quatro
+traços principais todos entre 5 e 10 (alunos bons em várias coisas) e comparei a
+predição com o traço dominante de cada um:
+
+| Modelo | Concorda com o traço dominante |
+|---|---|
+| Regressão Logística | **48.9%** |
+| Random Forest | 41.6% |
+| Gradient Boosting | 33.8% |
+
+Os números absolutos são baixos porque não existe gabarito de verdade aqui — nenhum
+desses alunos existe no dataset, e o "esperado" é só a regra do maior atributo. O
+que interessa é a **ordem**, que é a mesma dos passos 4 e 5, agora com mais de mil
+casos em vez de cinco.
 
 **Decisão final:** Regressão Logística com `C=5`. Perdi 0.38 ponto percentual de
 acurácia para ganhar um modelo que se comporta de forma coerente, devolve
@@ -204,10 +228,12 @@ destino de um aluno, é o trade-off certo.
 | Critério | Gradient Boosting | Random Forest | **Regressão Logística** |
 |---|---|---|---|
 | Acurácia (validação cruzada) | 99.88% | 99.63% | 99.50% |
+| Teste do piso | ok | ok | ok |
 | Personagens conhecidos | 3/5 | 5/5 | **5/5** |
 | Responde à variação de atributo | não | em degraus | **sim, suave** |
+| Perfis fora da distribuição | 33.8% | 41.6% | **48.9%** |
 | Dá para explicar a decisão | difícil | difícil | **sim, coeficientes** |
-| Tamanho do artefato `.pkl` | 1017 kB | 1018 kB | **2.7 kB** |
+| Tamanho do artefato `.pkl` | 1010 kB | 928 kB | **2.2 kB** (2.7 kB com os metadados) |
 
 ### Métricas do modelo final
 
