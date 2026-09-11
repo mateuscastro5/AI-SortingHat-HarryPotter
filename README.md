@@ -281,45 +281,25 @@ interface deixa isso explícito pro usuário.
 
 ## 🧵 Uma combinação que testei e não vingou
 
-Depois que os dois modelos ficaram prontos, veio a ideia óbvia: **e se o
-resmungo da triagem virasse informação pro Chapéu Seletor decidir**, igual a
-cena do filme em duas etapas — primeiro o murmúrio, depois o veredito?
-Retreinei o modelo de decisão recebendo as 8 notas *mais* o resultado da
-triagem.
+Tentei fazer o Chapéu Seletor decidir usando o resmungo da triagem como
+informação extra — igual a cena do filme em duas etapas. Não deu certo.
 
-O primeiro obstáculo foi de dado, não de modelo: nenhum aluno do acervo tem
-notas de personalidade *e* ficha cadastral genuínas ao mesmo tempo — são dois
-datasets separados. Pra treinar mesmo assim, cada um dos 1000 alunos
-fictícios ganhou um sobrenome sintético, calibrado em duas taxas que já
-tinham sido **medidas** no resto do projeto, não inventadas: só 14% dos
-alunos ficam com "linhagem conhecida" (a mesma cobertura real do acervo), e
-entre esses, o sobrenome bate com a casa verdadeira em 59,9% das vezes (a
-mesma taxa de concordância família→casa medida no notebook 03).
+Como os dois datasets são separados (nenhum aluno tem notas *e* ficha ao
+mesmo tempo), tive que fabricar um sobrenome sintético pros 1000 alunos pra
+poder testar, calibrado nas taxas reais já medidas no projeto (14% de
+linhagem conhecida, 59,9% de concordância família→casa). Testei 5 jeitos de
+usar esse sinal — probabilidades cruas, casa+confiança, feature de
+interação, grid de regularização, regra explícita de desempate. Nenhum
+ajudou: na melhor das hipóteses o modelo empatava com o original (aprendia a
+ignorar o sinal); com mais peso, piorava.
 
-Testei 5 jeitos diferentes de aproveitar esse sinal: as 4 probabilidades da
-triagem cruas, casa sugerida + confiança, uma feature de interação
-(nota-do-traço × probabilidade-da-triagem, pra deixar o modelo reforçar só
-quando os dois concordam), uma busca em 7 forças de regularização diferentes,
-e por fim uma regra explícita — nada de retreino, só "se o chapéu já está em
-dúvida e existe família batendo, usa a família". Nenhuma das cinco ajudou.
+A causa é quantidade de sinal, não técnica: linhagem só existe em 14% dos
+casos e, quando existe, acerta 59,9% — bom sinal, mas fraco demais pra
+desempatar um modelo que já acerta 99,8% sozinho.
 
-Na melhor das hipóteses o modelo **empatava** com o original nos casos onde
-ele já vacila (aprendia a ignorar o sinal, sensatamente); com mais peso no
-sinal, ele **piorava**. A regra explícita nem teve chance de agir: dos 47
-casos ambíguos que testei, só 5 tinham família conhecida — e nesses 5 o
-modelo original já acertava tudo sozinho.
-
-A causa não é falta de técnica, é quantidade de sinal: linhagem só existe em
-14% dos casos, e quando existe, acerta 59,9% — acima do chute (25% entre 4
-casas), mas fraco demais pra desempatar um modelo que já sozinho acerta
-99,8%. Não tem representação nem regularização que fabrique informação que os
-dados não têm.
-
-**Conclusão:** o Chapéu Seletor continua decidindo sozinho, com as notas de
-personalidade. A combinação fica documentada aqui — e o código de
-`treinar_completo.py` continua no repositório — porque um resultado negativo
-bem testado também é resultado, e é o mesmo padrão de honestidade que já valeu
-pros 44% da triagem.
+**O Chapéu Seletor continua decidindo sozinho.** Fica documentado aqui (e o
+código em `treinar_completo.py`) porque resultado negativo bem testado também
+é resultado — mesmo padrão de honestidade que já valeu pros 44% da triagem.
 
 ---
 
