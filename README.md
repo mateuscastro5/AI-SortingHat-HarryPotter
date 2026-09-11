@@ -134,24 +134,24 @@ Tailwind e Alpine.js via CDN, sem build step — só subir a API.
 
 ## Por que dois datasets
 
-O primeiro dataset que achei era sintético, e a crítica óbvia é "alunos
-inventados não valem". Fui atrás de dados de personagens reais e testei
-quatro fontes: uma tinha metade dos campos vazios, outra tinha ainda mais
-lacuna, uma terceira eram falas de filme (96% Grifinória, impossível
-generalizar) e a que sobrou — o Hogwarts Archives, 985 personagens — foi a
-melhor das ruins.
+O primeiro dataset que achei era sintético — "alunos inventados não valem".
+Testei mais 3 fontes de personagens reais antes de aceitar isso:
 
-O problema é estrutural: a wiki registra **o que o personagem é** (espécie,
-nacionalidade), não **como ele é**. Os dois campos que seriam traço de
-personalidade de verdade — bicho-papão e patrono — só estão preenchidos em
-uns 6% dos personagens. Não existe dataset real com notas de personalidade.
-É por isso, aliás, que o autor do dataset sintético teve que inventar os
-números: não havia fonte real pra tirar isso.
+- **Kaggle (gulsahdemiryurek)** — metade dos campos vazios.
+- **HP API** — ainda mais lacuna.
+- **Falas dos filmes** — 96% Grifinória, impossível generalizar.
+- **Hogwarts Archives, 985 personagens** — a melhor das ruins. Virou o dataset 2.
 
-Em vez de escolher um dataset e esconder o problema do outro, uso os dois,
-cada um no papel em que funciona: a **triagem** (985 personagens reais, ~44%
-de acurácia) roda antes e só **sugere**; a **cerimônia** (1000 alunos
-fictícios, 99,5%) roda na hora e **decide**.
+**O problema é estrutural:** a wiki registra o que o personagem *é* (espécie,
+nacionalidade), não *como ele é*. Bicho-papão e patrono — os únicos campos
+de personalidade de verdade — só existem em ~6% dos personagens. Não existe
+dataset real com notas de personalidade (por isso o autor do dataset
+sintético teve que inventar os números).
+
+**Solução:** uso os dois, cada um no papel que funciona:
+
+- **Triagem** (985 reais, ~44%) → roda antes, só **sugere**.
+- **Cerimônia** (1000 fictícios, 99,5%) → roda na hora, **decide**.
 
 ---
 
@@ -162,46 +162,37 @@ Notebooks [01](notebooks/01_analise_exploratoria.ipynb) e
 
 ### O modelo mais preciso foi descartado
 
-Comparei seis algoritmos por validação cruzada e todos passaram de 99% — a
-diferença entre o primeiro e o último era de 6 alunos em 800. Acurácia
-parou de servir como critério, então fui atrás de onde cada modelo quebra.
+Comparei 6 algoritmos por validação cruzada — todos acima de 99% (diferença
+de 6 alunos em 800). Acurácia parou de ser critério, então fui atrás de
+**onde** cada um quebra:
 
 ![Comparação dos modelos](notebooks/figuras/comparacao_modelos.png)
 
-O Gradient Boosting cravou 100% no teste, o que me deixou desconfiado em vez
-de satisfeito. Fui investigar e descobri por quê: no dataset inteiro nenhum
-aluno tem dois atributos principais com nota 8 ou mais — sempre existe um
-traço dominante único. Os 1000 alunos ocupam uma fatia bem estreita do espaço
-possível de notas.
-
-Testei então o que acontece **fora** dessa fatia — subindo só um atributo de
-cada vez, mantendo os outros fixos, pra ver se o modelo reage do jeito que
-faz sentido (mais coragem → mais chance de Grifinória). O Gradient Boosting
-simplesmente **ignora a coragem**: mesmo com nota 10, ele continua mandando o
-aluno pra Lufa-Lufa. Nenhuma métrica de acurácia mostra isso, porque o
-problema está fora da distribuição de treino. Testei também com personagens
-que conheço dos livros (Harry, Hermione, Draco, Luna, Cedrico) — o Gradient
-Boosting errou o Harry e a Hermione, mandando os dois pra Lufa-Lufa.
+- **Gradient Boosting cravou 100%** — suspeito demais. Causa: nenhum aluno
+  do dataset tem dois traços principais com nota 8+ ao mesmo tempo, então o
+  modelo nunca viu essa combinação.
+- **Teste fora da distribuição:** subi só a coragem de um perfil, resto
+  fixo. O GB **ignorou a coragem** — nota 10 e continuava mandando pra
+  Lufa-Lufa.
 
 ![Teste de monotonicidade](notebooks/figuras/teste_monotonicidade.png)
 
-Repeti o teste em volume, gerando mais de mil perfis sintéticos e comparando
-com a "regra do maior atributo" (a lógica óbvia de manda-pra-casa-do-traço-
-mais-alto): a Regressão Logística concordou com essa regra em quase metade
-dos casos, o Random Forest em 42% e o Gradient Boosting em só 34%.
+- **Personagens conhecidos:** o GB errou Harry e Hermione (foram pra
+  Lufa-Lufa).
+- **Teste em volume** (1000+ perfis sintéticos vs. "regra do maior
+  atributo" — manda pro traço mais alto): Regressão Logística concordou em
+  ~49%, Random Forest 42%, Gradient Boosting só 34%.
 
 ### Decisão final
 
-Fiquei com **Regressão Logística (C=5)**. Ela perde 0,38 ponto percentual de
-acurácia pro Gradient Boosting, mas em troca:
+**Regressão Logística (C=5).** Perde 0,38 ponto percentual pro Gradient
+Boosting, mas ganha:
 
-- reage de forma suave e coerente quando o perfil foge do que ela viu no
-  treino (o Gradient Boosting reage em degraus, ou nem reage);
-- acerta os 5 personagens de teste que montei na mão a partir dos livros;
-- devolve probabilidade calibrada, então dá pra confiar no "80% de certeza";
-- dá pra explicar a decisão pelos coeficientes — importante porque o sistema
-  mostra ao aluno por que ele foi pra determinada casa;
-- o arquivo do modelo tem 2,2 kB contra quase 1 MB dos outros dois.
+- Reação suave e coerente fora do treino (o GB reage em degraus, ou nem reage).
+- Acerta os 5 personagens de teste que montei a partir dos livros.
+- Probabilidade calibrada — dá pra confiar no "80% de certeza".
+- Decisão explicável pelos coeficientes (mostrada ao aluno).
+- Arquivo de 2,2 kB contra quase 1 MB dos outros dois.
 
 | Métrica | Valor |
 |---|---|
@@ -212,15 +203,14 @@ acurácia pro Gradient Boosting, mas em troca:
 | Baseline: chutar a classe majoritária | 26,5% |
 
 O único erro nos 200 alunos de teste foi um empate real (inteligência 7,
-lealdade 7), e o próprio modelo sinalizou isso com confiança de só 0,65 —
-exatamente o tipo de caso que a triagem manda pra entrevista.
+lealdade 7) — o modelo sinalizou com confiança de só 0,65, o tipo de caso que
+vai pra entrevista.
 
 ![Coeficientes](notebooks/figuras/importancia_atributos.png)
 
-Os coeficientes batem com o que os livros contam: Grifinória puxa por
-coragem, Corvinal por inteligência e criatividade, Lufa-Lufa por lealdade,
-Sonserina por ambição e artes das trevas. Bom sinal de que o modelo aprendeu
-o padrão certo, e não um atalho qualquer.
+Os coeficientes batem com os livros: Grifinória → coragem, Corvinal →
+inteligência/criatividade, Lufa-Lufa → lealdade, Sonserina → ambição/artes
+das trevas. O modelo aprendeu o padrão certo, não um atalho.
 
 ---
 
@@ -230,37 +220,32 @@ o padrão certo, e não um atalho qualquer.
 trabalho pesado foi engenharia de features e caça a vazamento de dado, não
 escolha de algoritmo.
 
-Comecei só com as colunas cruas, em one-hot: 34,5% (o baseline de chutar
-Grifinória sempre já dá 30,8%, então isso quase não ajudava). Fui
-adicionando:
+Comecei só com as colunas cruas, em one-hot: **34,5%** (baseline de chutar
+Grifinória: 30,8% — quase não ajudava). Fui adicionando:
 
-- **casa da família**, tirada do sobrenome. No cânone a casa é hereditária
-  (todo Weasley é Grifinória), mas na prática, quando a família é conhecida,
-  ela bate com a casa do personagem em só 60% dos casos — bem menos do que a
-  regra de ferro que a gente lembra dos livros. Achei um problema no caminho:
-  muito personagem sem nome próprio virava "família" com nomes tipo `girl` ou
-  `student`, que juntava gente das quatro casas — precisei filtrar isso;
-- **texto livre vetorizado** (títulos, profissão) com TF-IDF.
+- **Casa da família**, tirada do sobrenome. No cânone é hereditária (todo
+  Weasley é Grifinória), mas na prática bate só **60%** das vezes — bem
+  menos que a regra de ferro dos livros. Problema no caminho: personagem sem
+  nome próprio virava "família" tipo `girl`/`student`, misturando as quatro
+  casas — precisei filtrar.
+- **Texto livre vetorizado** (títulos, profissão) com TF-IDF. Levou a
+  **44,3%**.
 
-Isso levou o modelo a 44,3%. No meio do caminho, a acurácia deu um salto
-suspeito e fui conferir: o campo `titles` tinha entradas como `"Head of
-Slytherin House"` — ou seja, a resposta estava escrita dentro da própria
-feature, em 2,2% das linhas. Tive que apagar o nome de qualquer casa de todos
-os campos de texto antes de treinar de novo.
+**Vazamento encontrado:** o campo `titles` tinha `"Head of Slytherin
+House"` — a resposta escrita na própria feature, em 2,2% das linhas.
+Corrigido apagando nome de casa de todos os campos de texto.
 
-Testando o modelo sem cada grupo de informação por vez, o que mais sustenta a
-acurácia é o grupo **social** (títulos, profissão, nacionalidade, época) —
-tirando ele, o modelo cai quase 8 pontos. A linhagem, que eu esperava que
-fosse o principal, sozinha é a melhor feature isolada, mas no modelo completo
-quase não faz diferença, porque títulos e profissão já carregam a mesma
-informação por outro caminho.
+**Ablação por grupo** (o que sustenta a acurácia):
 
 ![Ablação](notebooks/figuras/ablacao_triagem.png)
 
-Entre os algoritmos testados, o LinearSVC ganhou por uma margem pequena, mas
-não tem `predict_proba` — e o sistema precisa das quatro probabilidades pra
-mostrar a confiança da sugestão. Por isso, de novo, fiquei com a Regressão
-Logística.
+- **Social** (títulos, profissão, época) — tirando, cai quase 8 pontos.
+- **Linhagem** — melhor feature isolada sozinha, mas some no modelo
+  completo (títulos já carregam a mesma informação).
+
+Entre os algoritmos, o LinearSVC ganhou por pouco, mas não tem
+`predict_proba` (o sistema precisa das 4 probabilidades) — fiquei de novo
+com a Regressão Logística.
 
 ![Comparação triagem](notebooks/figuras/comparacao_triagem.png)
 
@@ -269,13 +254,11 @@ Logística.
 | Acurácia 5-fold (985 personagens) | 43,9% |
 | Baseline (chutar Grifinória) | 30,8% |
 
-O modelo aprende alguma coisa real — 13 pontos acima do chute não é ruído.
-Mas ele erra mais do que acerta, e olhando os coeficientes dá pra entender
-por quê: os termos de maior peso são pedaços de data (`1980s`, `august
-1984`). Boa parte do que ele "aprendeu" é em que época o personagem nasceu,
-que na prática é em qual livro ele aparece — não personalidade. Por isso esse
-modelo entra no sistema como **triagem com revisão humana obrigatória**, e a
-interface deixa isso explícito pro usuário.
+O modelo aprende algo real — 13 pontos acima do chute não é ruído. Mas erra
+mais do que acerta: os termos de maior peso são pedaços de data (`1980s`,
+`august 1984`) — o modelo aprendeu *em que época* o personagem nasceu (= em
+qual livro aparece), não personalidade. Por isso entra no sistema como
+**triagem com revisão humana obrigatória**, explícito na interface.
 
 ---
 
@@ -284,18 +267,18 @@ interface deixa isso explícito pro usuário.
 Tentei fazer o Chapéu Seletor decidir usando o resmungo da triagem como
 informação extra — igual a cena do filme em duas etapas. Não deu certo.
 
-Como os dois datasets são separados (nenhum aluno tem notas *e* ficha ao
-mesmo tempo), tive que fabricar um sobrenome sintético pros 1000 alunos pra
-poder testar, calibrado nas taxas reais já medidas no projeto (14% de
-linhagem conhecida, 59,9% de concordância família→casa). Testei 5 jeitos de
-usar esse sinal — probabilidades cruas, casa+confiança, feature de
-interação, grid de regularização, regra explícita de desempate. Nenhum
-ajudou: na melhor das hipóteses o modelo empatava com o original (aprendia a
-ignorar o sinal); com mais peso, piorava.
-
-A causa é quantidade de sinal, não técnica: linhagem só existe em 14% dos
-casos e, quando existe, acerta 59,9% — bom sinal, mas fraco demais pra
-desempatar um modelo que já acerta 99,8% sozinho.
+- **O obstáculo:** os dois datasets são separados (nenhum aluno tem notas *e*
+  ficha ao mesmo tempo). Fabriquei um sobrenome sintético pros 1000 alunos,
+  calibrado nas taxas reais já medidas no projeto (14% de linhagem
+  conhecida, 59,9% de concordância família→casa).
+- **O teste:** 5 jeitos de usar esse sinal — probabilidades cruas,
+  casa+confiança, feature de interação, grid de regularização, regra
+  explícita de desempate.
+- **O resultado:** nenhum ajudou. Na melhor das hipóteses o modelo empatava
+  com o original (aprendia a ignorar o sinal); com mais peso, piorava.
+- **A causa:** quantidade de sinal, não técnica. Linhagem só existe em 14%
+  dos casos e, quando existe, acerta 59,9% — bom sinal, mas fraco demais pra
+  desempatar um modelo que já acerta 99,8% sozinho.
 
 **O Chapéu Seletor continua decidindo sozinho.** Fica documentado aqui (e o
 código em `treinar_completo.py`) porque resultado negativo bem testado também
