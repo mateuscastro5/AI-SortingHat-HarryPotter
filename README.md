@@ -481,3 +481,13 @@ limites de confiança e métricas.
 
 Harry Potter é propriedade da J.K. Rowling e da Warner Bros. Este é um
 projeto acadêmico sem fins comerciais.
+
+## 🤖 Uso de IA generativa
+
+Usei IA generativa como apoio de redação e revisão deste README — organizar a
+explicação, revisar o português, ajudar a estruturar as seções. As decisões do
+projeto em si (escolha dos datasets, condução dos experimentos, escolha dos
+modelos, implementação da API e da interface) são minhas, acompanhadas e
+validadas por mim, e todos os números aqui saem da execução real dos
+notebooks e dos scripts deste repositório — dá pra reproduzir qualquer um
+rodando o código.
